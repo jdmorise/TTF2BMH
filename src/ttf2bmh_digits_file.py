@@ -32,9 +32,9 @@ from fontTools import ttLib
 # Tab to iterate over Font Files in specific directory
 def main(): 
     # Folder to iterate on 
-    ttf_searchfolder = '.\\bmh_fonts\\fonts-master\\apache\\'
-    #ttf_searchfolder = '.\\bmh_fonts\\fonts-master\\ufl\\'
-    #ttf_searchfolder = '.\\font_TTF\\liberation-fonts-ttf\\' 
+    #ttf_searchfolder = '..\\bmh_fonts\\fonts-master\\apache\\'
+    #ttf_searchfolder = '..\\bmh_fonts\\fonts-master\\ufl\\'
+    ttf_searchfolder = '..\\ttf_fonts\\liberation-fonts-ttf\\' 
     
     # Definition of Font Heights and offsets
     
@@ -90,7 +90,7 @@ def main():
             fnt_filename = ttf_filepath + '\\' + 'bmfc\\' + filename + '.fnt' # Outputfile for BMF Font 
             tga_filename = ttf_filepath + '\\' + 'bmfc\\' + filename + '_0.tga' # Outputfile for BMF TGA
             bmfc_filename = ttf_filepath + '\\' + 'bmfc\\' + filename + '.bmfc' # Configuration File for BMF
-            bmfc_initial_filename = 'bmfont_initial_' + str(height) + '.bmfc'
+            bmfc_initial_filename = '..\\bmfont_initial_' + str(height) + '.bmfc'
             h_filename = ttf_filepath + '\\' + 'bmh' + '\\' + filename + '.h' # Outputfile for font 
 
             # Copy BMFC File and add fontName information
@@ -102,7 +102,7 @@ def main():
             bmfc_file.close()
 
             # Start BMF process 
-            subprocess.call(['bmfont64.exe','-c',bmfc_filename,'-t','characters_digits.txt','-o',fnt_filename])
+            subprocess.call(['..\\bmfont64.exe','-c',bmfc_filename,'-t','..\\characters_digits.txt','-o',fnt_filename])
 
             # Parse fnt file with font description 
 

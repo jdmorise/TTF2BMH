@@ -3,7 +3,7 @@ fileVersion=1
 
 # font settings
 charSet=0
-fontSize=64
+fontSize=32
 aa=1
 scaleH=100
 useSmoothing=1
@@ -28,7 +28,7 @@ useFixedHeight=0
 forceZero=1
 
 # output file
-outWidth=512
+outWidth=4096
 outHeight=128
 outBitDepth=8
 fontDescFormat=0
@@ -48,6 +48,6 @@ invB=0
 outlineThickness=0
 
 # selected chars
-chars=48-58
+chars=32-126
 
 # imported icon images

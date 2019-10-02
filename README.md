@@ -1,6 +1,10 @@
 # TTF2BMH
 This repository contains four python scripts to generate monochrome bitmap header fonts with character size of 24 to 64 pixels. 
   
+# Release 1.0
+The software is released under version 1.0 with the description below. 
+An updated version without the external BMFT Software, commandline interface, and more options will be shortly released under version 2.0. 
+
 # Overall functionality
 The software renders arbitrary TTF Fonts into a 8-bit depth TGA file, further converts each character to a monochrome array of bytes, and stores these arrays in a C header file. This header file can be used for any C microcontroller Code so that the characters can be displayed on monochrome OLED or LCD Display. 
 * ttf2bmh_digit_font.py : Scripts converts digits (0123456789:) from system installed fonts

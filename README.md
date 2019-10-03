@@ -15,36 +15,37 @@ The byte array is ordered the following:
 
 # Usage
 The script offers a commandline interface with somehow self-describing arguments. On the commandline, the search path and the foldername can be choosen. Default searchpath is the Windows Font directory under C:\Windows\Fonts\. 
- 
-usage: ttf2bmh.py [-h] [-l] [-f TTF_FOLDER] [-o OUTPUT_FOLDER]
-                  [-c CHARACTER_FILENAME] [--font FONT]
-                  [-s {24,32,40,48,56,64,all}] [--variable_width] [--progmem]
-                  [-p]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -l, --license         show license terms
-  -f TTF_FOLDER, --ttf_folder TTF_FOLDER
-                        Folder where ttf files are stored
-  -o OUTPUT_FOLDER, --output_folder OUTPUT_FOLDER
-                        Folder where bitmapheader output files will be stored.
-                        A subfolder for each Font will be created under the
-                        directory.
-  -c CHARACTER_FILENAME, --character_filename CHARACTER_FILENAME
-                        filename for characters to be processed
-  --font FONT           Define Font Name to be processed. Name should include
-                        modifier like Bold or Italic. If none is given, all
-                        fonts in folder will be processed.
-  -s {24,32,40,48,56,64,all}, --fontsize {24,32,40,48,56,64,all}
-                        Fontsize (Fontheight) in pixels. Default: 32
-  --variable_width      Variable width of characters.
-  --progmem             C Variable declaration adds PROGMEM to character
+    
+    usage: ttf2bmh.py [-h] [-l] [-f TTF_FOLDER] [-o OUTPUT_FOLDER]    
+                  [-c CHARACTER_FILENAME] [--font FONT]    
+                  [-s {24,32,40,48,56,64,all}] [--variable_width] [--progmem]    
+                  [-p]    
+    
+    optional arguments:  
+    -h, --help            show this help message and exit    
+    -l, --license         show license terms    
+    -f TTF_FOLDER, --ttf_folder TTF_FOLDER    
+                        Folder where ttf files are stored   
+    -o OUTPUT_FOLDER, --output_folder OUTPUT_FOLDER    
+                        Folder where bitmapheader output files will be stored.    
+                        A subfolder for each Font will be created under the    
+                        directory.    
+    -c CHARACTER_FILENAME, --character_filename CHARACTER_FILENAME    
+                        filename for characters to be processed    
+    --font FONT           Define Font Name to be processed. Name should include    
+                        modifier like Bold or Italic. If none is given, all    
+                        fonts in folder will be processed.    
+    -s {24,32,40,48,56,64,all}, --fontsize {24,32,40,48,56,64,all}
+                        Fontsize (Fontheight) in pixels. Default: 32    
+    --variable_width      Variable width of characters.    
+    --progmem             C Variable declaration adds PROGMEM to character
                         arrays. Useful to store the characters in porgram
                         memory for AVR Microcontrollers with limited Flash or
-                        EEprom
-  -p, --print_ascii     Print each character as ASCII Art on commandline, for
-                        debugging
-						
+                        EEprom    
+    -p, --print_ascii     Print each character as ASCII Art on commandline, for
+                        debugging    
+			
+
 # Requirements
 * Python 3
 * PIL

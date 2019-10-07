@@ -72,8 +72,7 @@ The scripts have been used to create the fonts of my BMH_fonts repository https:
 * PIL
 * fontTools
 * argparse
-
-## Examples
+* Windows (unfortunately, Linux is not supported right now due to limitations in Path Handling) 
 
 ## Disclaimer
 The latest version is not tested on MCU device level yet. 

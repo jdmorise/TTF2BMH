@@ -38,7 +38,7 @@ from fontTools import ttLib
 from PIL import Image, ImageFont, ImageDraw
 import argparse 
 
-VERSION = '2.0'
+VERSION = '2.0.1'
 
 # Tab to iterate over Font Files in specific directory
 def main(): 
@@ -52,6 +52,8 @@ def main():
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters.')
+    parser.add_argument('-fh','--font_height', help='Define fontsize of rendered font within the defined pixel image boundary')
+    parser.add_argument('-y','--y_offset', help='Define starting offset of character. Only meaningful if specific fontsize is rendered.')
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
     
@@ -102,6 +104,10 @@ def main():
             height_indices = range(len(font_heights))
         else: 
             height_indices = [font_heights.index(int(args.fontsize))]
+           
+            if (args.font_height is not None):
+                font_height = int(args.font_height) 
+   
                 
         # Read characters from file
         [character_line,chars] = read_character_file(args.character_filename)
@@ -130,7 +136,10 @@ def main():
                 # initialize PIL Image
                 height = font_heights[height_idx]
                 width = int(height *0.75)  
-                yoffset = font_yoffsets[height_idx]
+                if(args.y_offset is not None): 
+                    yoffset = int(args.y_offset)
+                else: 
+                    yoffset = font_yoffsets[height_idx]
 
                 # Filename Definitions
                 filename = Font + '_' + str(height) # General Filename 
@@ -139,7 +148,12 @@ def main():
 
                 # define PILfont
                 size = [width, height]
-                PILfont = ImageFont.truetype(ttf_absolute_filename, int(height*1.25))
+                
+                if (args.font_height is None): 
+                    font_height = int(font_heights[height_idx]*1.1)
+            
+                #font_height = int(height*1.1)
+                PILfont = ImageFont.truetype(ttf_absolute_filename, font_height)
                 
                 # Open BMH file and start writing
                 outfile = write_bmh_head(h_filename, Font, height)

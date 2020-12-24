@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #-------------------------------------------------------------------------
 #
 #
@@ -46,17 +47,20 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-l','--license',help='show license terms', action='store_true')
-    parser.add_argument('-f','--ttf_folder', default = 'C:\\Windows\\Fonts\\', help='Folder where ttf files are stored')
-    parser.add_argument('-o','--output_folder', default = '..\\bmh_fonts', help='Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory.')
+    parser.add_argument('-f','--ttf_folder', default = 'C:\\Windows\\Fonts\\', help='Folder where ttf files are stored (Defaults to C:\\Windows\\Fonts\\ on Windows, /usr/share/fonts on Linux)')
+    parser.add_argument('-o','--output_folder', default = '../bmh_fonts', help='Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory.')
     parser.add_argument('-c','--character_filename', default = '..//characters_digits.txt', help='filename for characters to be processed')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
-    parser.add_argument('-s','--fontsize', default='32', choices=['24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
+    parser.add_argument('-s','--fontsize', default='32', choices=['8','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters.')
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
-
+    parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
     args = parser.parse_args()
     print_program_header()
+
+    if sys.platform == 'linux' and args.ttf_folder == "C:\\Windows\\Fonts\\":
+        args.ttf_folder = "/usr/share/fonts"
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -64,7 +68,6 @@ def main():
     elif (args.license):
         print_license()
         return(0)
-
     else :
         progmem = args.progmem
         print_ascii = args.print_ascii
@@ -83,12 +86,12 @@ def main():
 
         Target_Font = args.font
         if not (Target_Font == ''):
-            ttf_filename = get_ttf_filename (Target_Font, ttf_searchfolder)
+            ttf_filename, ttf_abs_dir = get_ttf_filename (Target_Font, ttf_searchfolder)
             if(ttf_filename == -1):
                 print('No font with name: ' + Target_Font +' found' )
                 return(-1)
             else:
-                ttf_file = {'dir': ttf_searchfolder, 'filename': ttf_filename}
+                ttf_file = {'dir': ttf_abs_dir, 'filename': ttf_filename}
             TTF_FILES.append(ttf_file)
         else:
             TTF_FILES = search_ttf_folder(ttf_searchfolder)
@@ -114,13 +117,13 @@ def main():
             # Generate and check file paths and
             ttf_filename = ttf_file['filename']
             ttf_filepath = os.path.abspath(ttf_file['dir'])
-            ttf_absolute_filename = ttf_filepath + '\\' + ttf_filename
+            ttf_absolute_filename = ttf_filepath + '/' + ttf_filename
             tt = ttLib.TTFont(ttf_absolute_filename)
             fm = tt['name'].names[4].string
             Font = fm.decode('utf-8')
             Font = re.sub('\x00','',Font)
 
-            output_bmh_folder = output_folder + '\\' + Font
+            output_bmh_folder = output_folder + '/' + Font
             if not (os.path.exists(output_bmh_folder)):
                 os.mkdir(output_bmh_folder)
 
@@ -129,13 +132,16 @@ def main():
 
                 # initialize PIL Image
                 height = font_heights[height_idx]
-                width = int(height *0.75)
+                if args.square:
+                    width = height
+                else:
+                    width = int(height * 0.75)
                 yoffset = font_yoffsets[height_idx]
 
                 # Filename Definitions
                 filename = Font + '_' + str(height) # General Filename
-                h_filename = output_bmh_folder + '\\' + filename + '.h' # Outputfile for font
-                png_filename = output_bmh_folder + '\\' + filename + '.png' # Outputfile for font
+                h_filename = output_bmh_folder + '/' + filename + '.h' # Outputfile for font
+                png_filename = output_bmh_folder + '/' + filename + '.png' # Outputfile for font
 
                 # define PILfont
                 size = [width, height]
@@ -217,13 +223,14 @@ def print_license():
 def get_ttf_filename (Target_Font, ttf_searchfolder):
     TTF_FILES = []
     target_ttf_file = -1
+    target_ttf_dir = -1
     for dirpath, dirnames, filenames in os.walk(ttf_searchfolder):
         for filename in [f for f in filenames if f.endswith(".ttf")]:
             ttf_file = {'dir': dirpath, 'filename': filename}
             TTF_FILES.append(ttf_file)
 
     for ttf_file in TTF_FILES:
-        ttf_absolute_filename = ttf_searchfolder + '\\' + ttf_file['filename']
+        ttf_absolute_filename = ttf_file['dir'] + '/' + ttf_file['filename']
         tt = ttLib.TTFont(ttf_absolute_filename)
         fm = tt['name'].names[4].string
         Font = fm.decode('ascii', errors ='replace')
@@ -231,8 +238,9 @@ def get_ttf_filename (Target_Font, ttf_searchfolder):
         Font = re.sub('\x00','',Font)
         if(Target_Font == Font):
             target_ttf_file =  ttf_file['filename']
+            target_ttf_dir  =  ttf_file['dir']
 
-    return target_ttf_file
+    return target_ttf_file, target_ttf_dir
 
 #---------------------------------------------------------------------------------------
 # Write picture file
@@ -374,7 +382,7 @@ def write_bmh_tail(outfile, width_array, character_line):
 #
 def logfile_open(ttf_searchfolder):
 
-    log_filename = ttf_searchfolder + '\\' + 'ttf2bmh.log'
+    log_filename = ttf_searchfolder + '/' + 'ttf2bmh.log'
     log_file = open(log_filename,'w+')
     log_file.write('TTF2BMH version ' + VERSION + '(c) JD Morise\n')
     log_file.write('====================================================================\n')

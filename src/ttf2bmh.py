@@ -48,8 +48,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-l','--license',help='show license terms', action='store_true')
     parser.add_argument('-f','--ttf_folder', default = 'C:\\Windows\\Fonts\\', help='Folder where ttf files are stored (Defaults to C:\\Windows\\Fonts\\ on Windows, /usr/share/fonts on Linux)')
-    parser.add_argument('-o','--output_folder', default = '../bmh_fonts', help='Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory.')
-    parser.add_argument('-c','--character_filename', default = '..//characters_digits.txt', help='filename for characters to be processed')
+    parser.add_argument('-o','--output_folder', default = '..\\bmh_fonts', help='Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory.')
+    parser.add_argument('-c','--character_filename', default = '..\\characters_digits.txt', help='filename for characters to be processed')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['8','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters.')
@@ -61,6 +61,13 @@ def main():
 
     if sys.platform == 'linux' and args.ttf_folder == "C:\\Windows\\Fonts\\":
         args.ttf_folder = "/usr/share/fonts"
+
+    if sys.platform == 'linux' and args.output_folder == '..\\bmh_fonts':
+        args.output_folder = '../bmh_fonts'
+
+    if sys.platform == 'linux' and args.character_filename == '..\\characters_digits.txt':
+        args.character_filename = '../characters_digits.txt'
+
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -117,13 +124,13 @@ def main():
             # Generate and check file paths and
             ttf_filename = ttf_file['filename']
             ttf_filepath = os.path.abspath(ttf_file['dir'])
-            ttf_absolute_filename = ttf_filepath + '/' + ttf_filename
+            ttf_absolute_filename = os.path.join(ttf_filepath, ttf_filename)
             tt = ttLib.TTFont(ttf_absolute_filename)
             fm = tt['name'].names[4].string
             Font = fm.decode('utf-8')
             Font = re.sub('\x00','',Font)
 
-            output_bmh_folder = output_folder + '/' + Font
+            output_bmh_folder = os.path.join(output_folder, Font)
             if not (os.path.exists(output_bmh_folder)):
                 os.mkdir(output_bmh_folder)
 
@@ -140,8 +147,8 @@ def main():
 
                 # Filename Definitions
                 filename = Font + '_' + str(height) # General Filename
-                h_filename = output_bmh_folder + '/' + filename + '.h' # Outputfile for font
-                png_filename = output_bmh_folder + '/' + filename + '.png' # Outputfile for font
+                h_filename = os.path.join(output_bmh_folder, filename + '.h') # Outputfile for font
+                png_filename = os.path.join(output_bmh_folder, filename + '.png') # Outputfile for font
 
                 # define PILfont
                 size = [width, height]
@@ -230,7 +237,7 @@ def get_ttf_filename (Target_Font, ttf_searchfolder):
             TTF_FILES.append(ttf_file)
 
     for ttf_file in TTF_FILES:
-        ttf_absolute_filename = ttf_file['dir'] + '/' + ttf_file['filename']
+        ttf_absolute_filename = os.path.join(ttf_file['dir'], ttf_file['filename'])
         tt = ttLib.TTFont(ttf_absolute_filename)
         fm = tt['name'].names[4].string
         Font = fm.decode('ascii', errors ='replace')
@@ -382,7 +389,7 @@ def write_bmh_tail(outfile, width_array, character_line):
 #
 def logfile_open(ttf_searchfolder):
 
-    log_filename = ttf_searchfolder + '/' + 'ttf2bmh.log'
+    log_filename = os.path.join(ttf_searchfolder, 'ttf2bmh.log')
     log_file = open(log_filename,'w+')
     log_file.write('TTF2BMH version ' + VERSION + '(c) JD Morise\n')
     log_file.write('====================================================================\n')

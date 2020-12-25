@@ -48,8 +48,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-l','--license',help='show license terms', action='store_true')
     parser.add_argument('-f','--ttf_folder', default = 'C:\\Windows\\Fonts\\', help='Folder where ttf files are stored (Defaults to C:\\Windows\\Fonts\\ on Windows, /usr/share/fonts on Linux)')
-    parser.add_argument('-o','--output_folder', default = '..\\bmh_fonts', help='Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory.')
-    parser.add_argument('-c','--character_filename', default = '..\\characters_digits.txt', help='filename for characters to be processed')
+    parser.add_argument('-o','--output_folder', default = 'bmh_fonts', help='Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory (Defaults to ./bmhfonts)')
+    parser.add_argument('-c','--character_filename', help='filename for characters to be processed')
+    parser.add_argument('-C','--characters', type=str, help='String of characters to be processed (if no character_filename passed in)')
+    parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters (overrides -c and -C)')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['8','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters.')
@@ -57,17 +59,10 @@ def main():
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
     args = parser.parse_args()
-    print_program_header()
+    #print_program_header()
 
     if sys.platform == 'linux' and args.ttf_folder == "C:\\Windows\\Fonts\\":
         args.ttf_folder = "/usr/share/fonts"
-
-    if sys.platform == 'linux' and args.output_folder == '..\\bmh_fonts':
-        args.output_folder = '../bmh_fonts'
-
-    if sys.platform == 'linux' and args.character_filename == '..\\characters_digits.txt':
-        args.character_filename = '../characters_digits.txt'
-
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -113,8 +108,26 @@ def main():
         else:
             height_indices = [font_heights.index(int(args.fontsize))]
 
-        # Read characters from file
-        [character_line,chars] = read_character_file(args.character_filename)
+        if args.ascii:
+            chars = []
+            character_line = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+            [chars.append(x) for x in character_line if x not in chars]
+            character_line = "".join(chars)
+        elif args.character_filename is not None:
+            # Read characters from file
+            [character_line,chars] = read_character_file(args.character_filename)
+        elif args.characters is not None:
+            # Read characters from command line
+            chars = []
+            character_line = args.characters
+            [chars.append(x) for x in character_line if x not in chars]
+            character_line = "".join(chars)
+        else:
+            # Defaults to all numbers + colon if no chars given
+            character_line = "0123456789:"
+            chars = ['0','1','2','3','4','5','6','7','8','9',':']
+
+        print("Converting characters: \"" + character_line + "\"")
 
         # Start logging
         logfile = logfile_open(output_folder)
@@ -188,7 +201,7 @@ def main():
                     print(filename + '.h written')
                 logfile_append(logfile, filename)
 
-        print('-------------------------------------------------------------------------')
+        #print('-------------------------------------------------------------------------')
         print("TTF2BMH Finished")
         logfile_close(logfile)
 
@@ -317,10 +330,9 @@ def calculate_char_width(image, width, height):
 def read_character_file(char_filename):
     chars = []
     char_file = open(char_filename,'r')
-    for line in char_file:
-        character_line = line
-        for c in line:
-            chars.append(c)
+    character_line = char_file.read().replace("\n", "")
+    [chars.append(x) for x in character_line if x not in chars]
+    character_line = "".join(chars)
 
     return [character_line,chars]
 

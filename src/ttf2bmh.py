@@ -54,6 +54,7 @@ def main():
     parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters (overrides -c and -C)')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['8','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
+    parser.add_argument('-O','--offset', type=int, help='Y Offset for characters (Default is based off font size)')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters.')
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
@@ -101,7 +102,7 @@ def main():
 
         # Definition of Font Heights and offsets
         font_heights = [8, 24, 32, 40, 48, 56, 64]
-        font_yoffsets = [3, 5, 7, 8, 9, 10]
+        font_yoffsets = [0, 6, 5, 7, 8, 9, 10]
 
         if(args.fontsize == 'all'):
             height_indices = range(len(font_heights))
@@ -156,7 +157,10 @@ def main():
                     width = height
                 else:
                     width = int(height * 0.75)
-                yoffset = font_yoffsets[height_idx]
+                if args.offset is not None:
+                    yoffset = args.offset
+                else:
+                    yoffset = font_yoffsets[height_idx]
 
                 # Filename Definitions
                 filename = Font + '_' + str(height) # General Filename
@@ -191,6 +195,7 @@ def main():
 
                     write_bmh_char(outfile, char, dot_array, progmem)
                     if(print_ascii):
+                        print(char + ":")
                         print_char(image, height, char_width, x_offset)
 
                 # write tail and close bmh file

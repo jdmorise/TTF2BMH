@@ -52,6 +52,7 @@ def main():
     parser.add_argument('-c','--character_filename', help='filename for characters to be processed')
     parser.add_argument('-C','--characters', type=str, help='String of characters to be processed (if no character_filename passed in)')
     parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters (overrides -c and -C)')
+    parser.add_argument('--digits', action='store_true', help='Convert for all digit ascii characters (overrides -c and -C)')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['8','16','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('-O','--offset', type=int, help='Y Offset for characters (Default is based off font size)')
@@ -115,6 +116,11 @@ def main():
             character_line = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
             [chars.append(x) for x in character_line if x not in chars]
             character_line = "".join(chars)
+        if args.digits:
+            chars = []
+            character_line = " !\"#$%&'()*+,-./0123456789:;<=>?@"
+            [chars.append(x) for x in character_line if x not in chars]
+            character_line = "".join(chars)            
         elif args.character_filename is not None:
             # Read characters from file
             [character_line,chars] = read_character_file(args.character_filename)
@@ -173,6 +179,8 @@ def main():
 
                 if (args.font_height is None):
                     font_height = int(font_heights[height_idx]*1.1)
+                else:
+                    font_height = int(args.font_height)
 
                 #font_height = int(height*1.1)
                 PILfont = ImageFont.truetype(ttf_absolute_filename, font_height)
@@ -291,14 +299,17 @@ def write_pic_file(character_line, PILfont, width, height, png_filename):
 def get_pixel_byte(image, height, char_width, x_offset):
     dot_threshold = 127
     dot_array = []
+    s = ""
     for y_s in range(int(height/8)):
+        s = "\n"
         for x_s in range(char_width):
             dot_byte = 0
             for k in range(8):
                 bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
                 if(bmf_s < dot_threshold):
                     dot_byte = dot_byte + 2**k
-            dot_array.append(str(dot_byte))
+            dot_array.append(s+format(dot_byte,"#010b"))
+            s = ""
     return dot_array
 
 #---------------------------------------------------------------------------------------
@@ -382,8 +393,10 @@ def write_bmh_char(outfile, char, dot_array, progmem):
         C_declaration_1 = '[] = {'
 
     C_mem_array = (','.join(dot_array))
-    C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};\n'
-
+    C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};'
+    if ord(char) >= 32 and ord(char) < 128):  
+        C_printline = C_printline + ' // char ' + char
+    C_printline = C_printline + + '\n'
     #print(C_printline)
     outfile.write(C_printline)
 

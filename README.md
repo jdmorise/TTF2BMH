@@ -34,7 +34,7 @@ The script offers a command line interface with somehow self-describing argument
       -C CHARACTERS, --characters CHARACTERS
                             String of characters to be processed (if no character_filename passed in)
       --ascii               Convert for all ascii characters (overrides -c and -C)
-      --digits              Convert for all punctuation and digit characters: ' !"#$%&'()*+,-./0123456789:;<=>?@' (overrides -c and -C and --ascii)
+      --lowerascii          Convert for all lower ascii characters (punctuation and digits only) (overrides -c and -C)
       --font FONT           Define Font Name to be processed. Name should include modifier like Bold or Italic. If none
                             is given, all fonts in folder will be processed.
       -s {8,16,24,32,40,48,56,64,all}, --fontsize {8,16,24,32,40,48,56,64,all}

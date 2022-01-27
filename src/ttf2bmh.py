@@ -52,7 +52,7 @@ def main():
     parser.add_argument('-c','--character_filename', help='filename for characters to be processed')
     parser.add_argument('-C','--characters', type=str, help='String of characters to be processed (if no character_filename passed in)')
     parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters (overrides -c and -C)')
-    parser.add_argument('--lowerascii', action='store_true', help='Convert for all lower ascii characters (punctuation and digits) (overrides -c and -C)')
+    parser.add_argument('--lowerascii', action='store_true', help='Convert for all lower ascii characters (punctuation and digits only) (overrides -c and -C)')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['8','16','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('-O','--offset', type=int, help='Y Offset for characters (Default is based off font size)')

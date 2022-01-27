@@ -60,7 +60,7 @@ def main():
     parser.add_argument('-fh','--font_height', help='Define fontsize of rendered font within the defined pixel image boundary')
     parser.add_argument('-y','--y_offset', help='Define starting offset of character. Only meaningful if specific fontsize is rendered.')
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
-    parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
+    parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
     args = parser.parse_args()
 
@@ -205,7 +205,7 @@ def main():
                         x_offset = 0
 
                     width_array.append(str(char_width))
-                    dot_array = get_pixel_byte(image, height, char_width, x_offset)
+                    dot_array = get_pixel_byte(image, height, char_width, x_offset, print_ascii)
 
                     write_bmh_char(outfile, char, dot_array, progmem)
                     if(print_ascii):
@@ -296,20 +296,24 @@ def write_pic_file(character_line, PILfont, width, height, png_filename):
 
 #---------------------------------------------------------------------------------------
 # Calculate full pixels from image
-def get_pixel_byte(image, height, char_width, x_offset):
+def get_pixel_byte(image, height, char_width, x_offset, print_ascii = False):
     dot_threshold = 127
     dot_array = []
     s = ""
     for y_s in range(int(height/8)):
-        s = "\n"
+        if print_ascii:
+            s = "\n"
         for x_s in range(char_width):
             dot_byte = 0
             for k in range(8):
                 bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
                 if(bmf_s < dot_threshold):
                     dot_byte = dot_byte + 2**k
-            dot_array.append(s+format(dot_byte,"#010b"))
-            s = ""
+            if print_ascii:
+                dot_array.append(s+format(dot_byte,"#010b"))
+                s = ""
+            else:
+                dot_array.append(str(dot_byte))
     return dot_array
 
 #---------------------------------------------------------------------------------------

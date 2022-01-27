@@ -39,7 +39,7 @@ from fontTools import ttLib
 from PIL import Image, ImageFont, ImageDraw
 import argparse
 
-VERSION = '2.1'
+VERSION = '2.2'
 
 # Tab to iterate over Font Files in specific directory
 def main():

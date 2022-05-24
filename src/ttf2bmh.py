@@ -200,7 +200,11 @@ def main():
                 h_filename = os.path.join(output_bmh_folder, filename + '.h') # Outputfile for font
                 png_filename = os.path.join(output_bmh_folder, filename + '.png') # Outputfile for font
 
-                # define PILfont
+                # define PILfont base image
+                # make sure I have enough space when in variable width
+                if(variable_width):
+                    width = int(height * 2)
+                    
                 size = [width, height]
 
                 if (args.font_height is None):

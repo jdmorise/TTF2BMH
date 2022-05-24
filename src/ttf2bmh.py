@@ -39,7 +39,7 @@ from fontTools import ttLib
 from PIL import Image, ImageFont, ImageDraw
 import argparse
 
-VERSION = '2.2'
+VERSION = '2.3'
 
 # Tab to iterate over Font Files in specific directory
 def main():
@@ -56,14 +56,17 @@ def main():
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['8','16','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('-O','--offset', type=int, help='Y Offset for characters (Default is based off font size)')
-    parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters.')
+    parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters (overrides --square and --width).')
     parser.add_argument('-fh','--font_height', help='Define fontsize of rendered font within the defined pixel image boundary')
     parser.add_argument('-y','--y_offset', help='Define starting offset of character. Only meaningful if specific fontsize is rendered.')
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
+    parser.add_argument('-w','--width',help='Fixed font width in pixels. Default: height * 0.75 (overrides --square)')
+    parser.add_argument('-a','--anchor', default='ascender', choices=['ascender','top','middle','baseline','bottom','descender'],help='Vertical anchor for the text. For anything but the default, you will want to adapt Offset.')
+    
     args = parser.parse_args()
-
+    
     if sys.platform == 'linux' and args.ttf_folder == "C:\\Windows\\Fonts\\":
         args.ttf_folder = "/usr/share/fonts"
 
@@ -116,7 +119,7 @@ def main():
             character_line = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
             [chars.append(x) for x in character_line if x not in chars]
             character_line = "".join(chars)
-        if args.lowerascii:
+        elif args.lowerascii:
             chars = []
             character_line = " !\"#$%&'()*+,-./0123456789:;<=>?@"
             [chars.append(x) for x in character_line if x not in chars]
@@ -131,11 +134,27 @@ def main():
             [chars.append(x) for x in character_line if x not in chars]
             character_line = "".join(chars)
         else:
-            # Defaults to all numbers + colon if no chars given
+            # Defaults to all numbers + some other small stuff if no chars given
+            chars = []
             character_line = "0123456789:"
-            chars = ['0','1','2','3','4','5','6','7','8','9',':']
-
+            [chars.append(x) for x in character_line if x not in chars]
+            character_line = "".join(chars)    
+            
         print("Converting characters: \"" + character_line + "\"")
+
+        anchor = 'la'
+        if args.anchor == 'ascender':
+            anchor = 'la'
+        elif args.anchor == 'top':
+            anchor = 'lt'
+        elif args.anchor == 'middle':
+            anchor = 'lm'
+        elif args.anchor == 'baseline':
+            anchor = 'ls'
+        elif args.anchor == 'bottom':
+            anchor = 'lb'
+        elif args.anchor == 'descender':
+            anchor = 'ld'
 
         # Start logging
         logfile = logfile_open(output_folder)
@@ -148,7 +167,12 @@ def main():
             ttf_absolute_filename = os.path.join(ttf_filepath, ttf_filename)
             tt = ttLib.TTFont(ttf_absolute_filename)
             fm = tt['name'].names[4].string
-            Font = fm.decode('utf-8')
+            try:
+                Font = fm.decode('utf-8')
+            except Exception as ex:
+                print(f"Exception: {ex} when reading font file {ttf_absolute_filename}. Skipping.")
+                continue                
+            
             Font = re.sub('\x00','',Font)
 
             output_bmh_folder = os.path.join(output_folder, Font)
@@ -160,7 +184,9 @@ def main():
 
                 # initialize PIL Image
                 height = font_heights[height_idx]
-                if args.square:
+                if args.width:
+                    width = int(args.width)
+                elif args.square:
                     width = height
                 else:
                     width = int(height * 0.75)
@@ -183,16 +209,34 @@ def main():
                     font_height = int(args.font_height)
 
                 #font_height = int(height*1.1)
-                PILfont = ImageFont.truetype(ttf_absolute_filename, font_height)
+                
+                if(print_ascii):
+                    print("\n" + filename + ':')
+                    
+                try:
+                    PILfont = ImageFont.truetype(ttf_absolute_filename, font_height)
+                except Exception as ex:
+                    print(f"Exception: {ex} when reading font file {ttf_absolute_filename} with height {font_height}. Skipping.")
+                    continue
 
                 # Open BMH file and start writing
-                outfile = write_bmh_head(h_filename, Font, height)
+                if(variable_width):
+                    mywidth = "variable"
+                else:
+                    mywidth = str(width)
+                outfile = write_bmh_head(h_filename, Font, height,mywidth)
 
+                # the overall image, combines all characters, constructed one by one
+                mode = '1'
+                pic_size = (len(character_line) * (width + 10), height)
+                image_pic =  Image.new(mode, pic_size, color=255)
+                width_so_far = 0
+                
                 for char in chars:
                     # Create pixel image with PIL
                     image =  Image.new('1', size, color=255)
                     draw = ImageDraw.Draw(image)
-                    draw.text((0, -yoffset), char, font=PILfont)
+                    draw.text((0, -yoffset), char, font=PILfont, anchor=anchor)
 
                     # Calculate byte arrays and write to file
 
@@ -200,6 +244,9 @@ def main():
                         [zero_col_cnt_left, zero_col_cnt_right] = calculate_char_width(image, width, height)
                         char_width = width - zero_col_cnt_right - zero_col_cnt_left
                         x_offset = zero_col_cnt_left
+                        if char_width < 1:
+                            char_width = 0
+                            x_offset = 0
                     else:
                         char_width = width
                         x_offset = 0
@@ -211,13 +258,18 @@ def main():
                     if(print_ascii):
                         print(char + ":")
                         print_char(image, height, char_width, x_offset)
+                        
+                    print_image(image_pic,width_so_far,image, height, char_width, x_offset)
+                    width_so_far += char_width
+                    if(variable_width):
+                        width_so_far += 1
 
                 # write tail and close bmh file
                 write_bmh_tail(outfile, width_array, character_line)
+                
                 # write Image picture with all characters
-                write_pic_file(character_line, PILfont, width, height, png_filename)
-                if(len(TTF_FILES)<20):
-                    print(filename + '.h written')
+                write_pic_file(image_pic, width_so_far, height, png_filename)
+
                 logfile_append(logfile, filename)
 
         #print('-------------------------------------------------------------------------')
@@ -283,14 +335,18 @@ def get_ttf_filename (Target_Font, ttf_searchfolder):
 
 #---------------------------------------------------------------------------------------
 # Write picture file
-def write_pic_file(character_line, PILfont, width, height, png_filename):
-
-    mode = '1'
-    pic_size = (len(character_line) * width, height+10)
-    image_pic =  Image.new(mode, pic_size, color=255)
-    draw_pic = ImageDraw.Draw(image_pic)
-    draw_pic.text((0, 0), character_line, font=PILfont)
-    image_pic.save(png_filename)
+def write_pic_file(image_pic, width_so_far, height, png_filename):
+    actual_x,actual_y = image_pic.size
+    # print(f"Resizing image ({width_so_far},{height}) from ({actual_x},{actual_y})")
+    
+    if width_so_far <= 0:
+        width_so_far = 0
+    if (actual_x < width_so_far) or (actual_y < height):
+        print(f"ERROR: truncating image ({width_so_far},{height}) to ({actual_x},{actual_y})")
+        image_pic.save(png_filename)
+    else:
+        newimg = image_pic.crop((0,0,width_so_far,height))
+        newimg.save(png_filename)
 
     return 0
 
@@ -373,7 +429,7 @@ def search_ttf_folder(ttf_searchfolder):
     return TTF_FILES
 
 #---------------------------------------------------------------------------------------
-def write_bmh_head(h_filename, Font, height):
+def write_bmh_head(h_filename, Font, height, width):
 # Process BMF array and create header file to be used with any C compiler
     outfile = open(h_filename,"w+")
 
@@ -382,7 +438,7 @@ def write_bmh_head(h_filename, Font, height):
     outfile.write("// Font " +  Font + "\n")
 
     #print('Font: ' + Font + ', Size:' + str(height))
-    outfile.write("// Font Size: " + str(height) + "\n")
+    outfile.write(f"// Font Size: {height} * {width}\n")
     return outfile
 
 #---------------------------------------------------------------------------------------
@@ -461,6 +517,18 @@ def print_char(image, height, char_width, x_offset):
         print(ascii_bmp)
     print(' ')
     return 0
+
+#---------------------------------------------------------------------------------------
+# Copy over pixels to destination image
+# TODO do this
+def print_image(dest_image, width_so_far, image, height, char_width, x_offset):
+    dot_threshold = 128
+    for y_s in range(height):
+        for x_s in range(char_width):
+            bmf_s = image.getpixel(((x_s+x_offset), y_s))
+            if (bmf_s < dot_threshold):
+                dest_image.putpixel((width_so_far+x_s,y_s),0)
+    return
 #---------------------------------------------------------------------------------------
 # Main function handler
 

@@ -49,7 +49,7 @@ The script offers a command line interface with somehow self-describing argument
     -w WIDTH, --width WIDTH
                             Fixed font width in pixels. Default: height * 0.75 (overrides --square)
     -a {ascender,top,middle,baseline,bottom,descender}, --anchor {ascender,top,middle,baseline,bottom,descender}
-                            Vertical anchor for the text. For anything but the default, you will want to adapt Offset.
+                            Vertical anchor for the text. For anything but the default (ascender), you will want to adapt Offset.
 
 The program can also be run directly on Linux systems by doing `./ttf2bmh.py`
 

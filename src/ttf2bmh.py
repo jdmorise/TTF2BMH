@@ -458,8 +458,11 @@ def write_bmh_char(outfile, char, dot_array, progmem):
 
     C_mem_array = (','.join(dot_array))
     C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};'
-    if ord(char) >= 32 and ord(char) < 128:  
-        C_printline = C_printline + ' // char ' + char
+    if ord(char) >= 32 and ord(char) < 128:
+        if ord(char) == 92:
+            C_printline = C_printline + ' // char (slash)'
+        else:
+            C_printline = C_printline + ' // char ' + char
     C_printline = C_printline + '\n'
     #print(C_printline)
     outfile.write(C_printline)

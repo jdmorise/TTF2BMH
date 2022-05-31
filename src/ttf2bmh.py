@@ -39,7 +39,20 @@ from fontTools import ttLib
 from PIL import Image, ImageFont, ImageDraw
 import argparse
 
-VERSION = '2.3'
+VERSION = '2.4'
+
+
+import re
+
+def parseNumList(string):
+    m = re.match(r'(\d+)(?:-(\d+))?$', string)
+    # ^ (or use .split('-'). anyway you like.)
+    if not m:
+        raise argparse.ArgumentTypeError("'" + string + "' is not a range of numbers. Expected forms: '32-126' or '96'.")
+    start = m.group(1)
+    end = m.group(2) or start
+    # and add 1 to end, as list is not inclusive
+    return list(range(int(start,10), int(end,10)+1))
 
 # Tab to iterate over Font Files in specific directory
 def main():
@@ -51,19 +64,22 @@ def main():
     parser.add_argument('-o','--output_folder', default = 'bmh_fonts', help='Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory (Defaults to ./bmhfonts)')
     parser.add_argument('-c','--character_filename', help='filename for characters to be processed')
     parser.add_argument('-C','--characters', type=str, help='String of characters to be processed (if no character_filename passed in)')
-    parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters (overrides -c and -C)')
-    parser.add_argument('--lowerascii', action='store_true', help='Convert for all lower ascii characters (punctuation and digits only) (overrides -c and -C amd --ascii)')
+    parser.add_argument('-r','--range',type=parseNumList, help='range of characters, by decimal value in the ASCII table. Example: "32-126" or "96". (overrides -c and -C)')
+    parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters. Shortcut for "-r 32-126".')
+    parser.add_argument('--lowerascii', action='store_true', help='Convert for all lower ascii characters (punctuation and digits only) Shortcut for "-r 32-64".')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
     parser.add_argument('-s','--fontsize', default='32', choices=['8','16','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
     parser.add_argument('-O','--offset', type=int, help='Y Offset for characters (Default is based off font size)')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters (overrides --square and --width).')
     parser.add_argument('-fh','--font_height', help='Define fontsize of rendered font within the defined pixel image boundary')
+    parser.add_argument('-a','--anchor', default='ascender', choices=['ascender','top','middle','baseline','bottom','descender'],help='Vertical anchor for the text. For anything but the default (ascender), you will want to adapt Offset.')
     parser.add_argument('-y','--y_offset', help='Define starting offset of character. Only meaningful if specific fontsize is rendered.')
-    parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
-    parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
     parser.add_argument('-w','--width',help='Fixed font width in pixels. Default: height * 0.75 (overrides --square)')
-    parser.add_argument('-a','--anchor', default='ascender', choices=['ascender','top','middle','baseline','bottom','descender'],help='Vertical anchor for the text. For anything but the default (ascender), you will want to adapt Offset.')
+    parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
+    parser.add_argument('-T','--Tiny4kOLED',dest='tiny4koled',default=False, action='store_true',help='Make C code formatted for Tiny4kOLED. Must be used with --range. (supports both fixed and variable width)')
+    parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.')
+    
     
     args = parser.parse_args()
     
@@ -113,17 +129,33 @@ def main():
             height_indices = range(len(font_heights))
         else:
             height_indices = [font_heights.index(int(args.fontsize))]
+            
+        chars_must_be_in_sequence = False
+        headerformat = ""
+        if args.tiny4koled:
+            headerformat = 'tiny4koled'      
+            chars_must_be_in_sequence = True      
 
-        if args.ascii:
+        if args.range:
             chars = []
-            character_line = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-            [chars.append(x) for x in character_line if x not in chars]
+            for i in args.range:
+                chars.append(chr(i))
+            character_line = "".join(chars)
+        elif args.ascii:
+            chars = []
+            myrange = list(range(32,126+1))
+            for i in myrange:
+                chars.append(chr(i))
             character_line = "".join(chars)
         elif args.lowerascii:
             chars = []
-            character_line = " !\"#$%&'()*+,-./0123456789:;<=>?@"
-            [chars.append(x) for x in character_line if x not in chars]
-            character_line = "".join(chars)            
+            myrange = list(range(32,64+1))
+            for i in myrange:
+                chars.append(chr(i))
+            character_line = "".join(chars)
+        elif chars_must_be_in_sequence:
+            print('The chosen output format requires the use of --range or one of its shortcuts.' )
+            return(-1)
         elif args.character_filename is not None:
             # Read characters from file
             [character_line,chars] = read_character_file(args.character_filename)
@@ -155,7 +187,7 @@ def main():
             anchor = 'lb'
         elif args.anchor == 'descender':
             anchor = 'ld'
-
+        
         # Start logging
         logfile = logfile_open(output_folder)
 
@@ -228,7 +260,9 @@ def main():
                     mywidth = "variable"
                 else:
                     mywidth = str(width)
-                outfile = write_bmh_head(h_filename, Font, height,mywidth)
+                    
+                printable_fontname = f"{Font.replace(' ','_')}_{height}x{mywidth}"
+                outfile = write_bmh_head(h_filename, Font, height, mywidth, sys.argv, progmem, headerformat, printable_fontname)
 
                 # the overall image, combines all characters, constructed one by one
                 mode = '1'
@@ -248,8 +282,14 @@ def main():
                         [zero_col_cnt_left, zero_col_cnt_right] = calculate_char_width(image, width, height)
                         char_width = width - zero_col_cnt_right - zero_col_cnt_left
                         x_offset = zero_col_cnt_left
+                        # print(f"{ord(char)}: w={char_width}, x={x_offset}\n")
                         if char_width < 1:
                             char_width = 0
+                            x_offset = 0
+                            
+                        if char_width == 0 and ord(char) == 32:
+                            # special case for space
+                            char_width = int(height * 0.75)
                             x_offset = 0
                     else:
                         char_width = width
@@ -258,7 +298,7 @@ def main():
                     width_array.append(str(char_width))
                     dot_array = get_pixel_byte(image, height, char_width, x_offset, print_ascii)
 
-                    write_bmh_char(outfile, char, dot_array, progmem)
+                    write_bmh_char(outfile, char, dot_array, progmem, headerformat)
                     if(print_ascii):
                         print(char + ":")
                         print_char(image, height, char_width, x_offset)
@@ -269,7 +309,11 @@ def main():
                         width_so_far += 1
 
                 # write tail and close bmh file
-                write_bmh_tail(outfile, width_array, character_line)
+                if(variable_width):
+                    mywidth = 0
+                else:
+                    mywidth = width
+                write_bmh_tail(outfile, width_array, character_line, height, mywidth, progmem, headerformat, printable_fontname)
                 
                 # write Image picture with all characters
                 write_pic_file(image_pic, width_so_far, height, png_filename)
@@ -361,7 +405,7 @@ def get_pixel_byte(image, height, char_width, x_offset, print_ascii = False):
     dot_array = []
     s = ""
     for y_s in range(int(height/8)):
-        if print_ascii:
+        if print_ascii and y_s > 0:
             s = "\n"
         for x_s in range(char_width):
             dot_byte = 0
@@ -433,31 +477,41 @@ def search_ttf_folder(ttf_searchfolder):
     return TTF_FILES
 
 #---------------------------------------------------------------------------------------
-def write_bmh_head(h_filename, Font, height, width):
+def write_bmh_head(h_filename, Font, height, width, args, progmem, headerformat, printable_fontname):
 # Process BMF array and create header file to be used with any C compiler
     outfile = open(h_filename,"w+")
 
     outfile.write("// Header File for SSD1306 characters\n")
-    outfile.write("// Generated with TTF2BMH\n")
+    outfile.write("// Generated with TTF2BMH, with arguments " + ' '.join(args) + "\n")
     outfile.write("// Font " +  Font + "\n")
-
     #print('Font: ' + Font + ', Size:' + str(height))
     outfile.write(f"// Font Size: {height} * {width}\n")
+    
+    if headerformat  == 'tiny4koled':
+        outfile.write("#include <avr/pgmspace.h>\n\n")
+        outfile.write(f"const uint8_t ssd1306xled_font{printable_fontname} [] {'PROGMEM' if progmem else ''} = {{\n")
     return outfile
 
 #---------------------------------------------------------------------------------------
 #
-def write_bmh_char(outfile, char, dot_array, progmem):
+def write_bmh_char(outfile, char, dot_array, progmem, headerformat):
     # C Type declaration strings
     # Adjust for different MCU/compilers
-    C_declaration_0 = 'const char bitmap_'
-    if(progmem):
-        C_declaration_1 = '[] PROGMEM = {'
-    else:
-        C_declaration_1 = '[] = {'
 
+    # dot_array starts with a newline when using print_ascii. 
     C_mem_array = (','.join(dot_array))
-    C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};'
+    
+    if headerformat  == 'tiny4koled':
+        C_printline =  C_mem_array +','
+    else:
+        C_declaration_0 = 'const char bitmap_'
+        if(progmem):
+            C_declaration_1 = '[] PROGMEM = {'
+        else:
+            C_declaration_1 = '[] = {'
+
+        C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};'
+        
     if ord(char) >= 32 and ord(char) < 128:
         if ord(char) == 92:
             C_printline = C_printline + ' // char (backslash)'
@@ -469,22 +523,103 @@ def write_bmh_char(outfile, char, dot_array, progmem):
 
 #---------------------------------------------------------------------------------------
 # Write BMH Tail and close file
-def write_bmh_tail(outfile, width_array, character_line):
-    C_addr_array = []
-    C_char_width_0 = 'const char char_width[] = {'
-    C_char_width_1 = (','.join(width_array))
-    C_char_width_2 = '};\n'
+def write_bmh_tail(outfile, width_array, character_line, height, width, progmem, headerformat, printable_fontname):
 
-    outfile.write(C_char_width_0 + C_char_width_1 + C_char_width_2)
+    pm = ""
+    if progmem: 
+        pm = "PROGMEM"
+    
+    if headerformat  == 'tiny4koled':
+        outfile.write("};\n\n")
+        if width != 0:
+            # fixed width
+            outfile.write(f"const DCfont TinyOLEDFont_{printable_fontname} = {{\n")
+            outfile.write(f"  (uint8_t *)ssd1306xled_font{printable_fontname},\n")
+            outfile.write(f"  {width}, // character width in pixels\n")
+            outfile.write(f"  {int(height / 8)}, // character height in pages (8 pixels)\n")
+            outfile.write(f"  {ord(character_line[0])},{ord(character_line[-1])} // ASCII extents\n")
+            outfile.write(f"}};\n\n")
+            outfile.write(f"#define FONT{printable_fontname.upper()} (&TinyOLEDFont{printable_fontname})\n")
+        else:
+            # variable width
+            outfile.write(f"const uint8_t TinyOLEDFont_{printable_fontname}_widths [] {pm} = {{\n")
+            i = 0
+            s = ""
+            for char in character_line:
+                s = s + str(width_array[i]) + ","
+                i += 1
+                if i % 16 == 0:
+                    outfile.write(f"  {s}\n")
+                    s = ""
+            if len(s) > 0:
+                outfile.write(f"  {s}\n")
+            outfile.write(f"}};\n\n")
+            outfile.write(f"const uint16_t TinyOLEDFont_{printable_fontname}_widths_16s [] {pm} = {{\n")
+            i = 0
+            s = ""
+            for char in character_line:
+                s = s + str(width_array[i]) + "+"
+                i += 1
+                if i % 16 == 0:
+                    outfile.write(f"  {s[:-1]},\n")
+                    s = ""
+            if len(s) > 0:
+                outfile.write(f"  {s[:-1]}\n")
+            outfile.write(f"}};\n\n")
+            outfile.write(f"const DCfont TinyOLEDFont{printable_fontname} = {{\n")
+            outfile.write(f"  (uint8_t *)ssd1306xled_font{printable_fontname},\n")
+            outfile.write(f"  0, // character width in pixels\n")
+            outfile.write(f"  {int(height / 8)}, // character height in pages (8 pixels)\n")
+            outfile.write(f"  {ord(character_line[0])},{ord(character_line[-1])}, // ASCII extents\n")
+            outfile.write(f"  (uint16_t *)TinyOLEDFont_{printable_fontname}_widths_16s,\n")
+            outfile.write(f"  (uint8_t *)TinyOLEDFont_{printable_fontname}_widths,\n")
+            outfile.write(f"  1 // spacing\n")
+            outfile.write(f"}};\n\n")
+            outfile.write(f"#define FONT{printable_fontname.upper()} (&TinyOLEDFont{printable_fontname})\n")
+             
+        
+        
+# // ----------------------------------------------------------------------------
 
-    for char in character_line:
-        C_addr_array.append('&bitmap_' + str(ord(char)))
+# const uint8_t Tiny4kOLED_font8x16_caps_widths [] PROGMEM = {
+#   7,2,6,7,5,7,8,3,4,4,7,7,3,6,2,7,
+#   6,5,6,6,6,6,6,6,6,6,2,2,6,7,6,6,
+#   7,8,7,7,7,7,7,7,8,5,7,7,7,7,8,7,
+#   7,7,8,6,7,8,8,7,8,7,7,4,6,6,5,8
+# };
 
-    C_addr  = (','.join(C_addr_array))
-    C_address_declaration_1 = "const char* char_addr[] = {"
-    C_address_declaration_2 = "};\n"
+# const uint16_t Tiny4kOLED_font8x16_caps_widths_16s [] PROGMEM = {
+#   7+2+6+7+5+7+8+3+4+4+7+7+3+6+2+7,
+#   6+5+6+6+6+6+6+6+6+6+2+2+6+7+6+6,
+#   7+8+7+7+7+7+7+7+8+5+7+7+7+7+8+7,
+#   7+7+8+6+7+8+8+7+8+7+7+4+6+6+5+8
+# };
 
-    outfile.write(C_address_declaration_1 + C_addr + C_address_declaration_2)
+# const DCfont Tiny4kOLEDfont8x16Caps = {
+#   (uint8_t *)Tiny4kOLED_font8x16_caps,
+#   0, // character width in pixels
+#   2, // character height in pages (8 pixels)
+#   32,95, // ASCII extents
+#   (uint16_t *)Tiny4kOLED_font8x16_caps_widths_16s,
+#   (uint8_t *)Tiny4kOLED_font8x16_caps_widths,
+#   1 // spacing
+#   };        
+    else:
+        C_addr_array = []
+        C_char_width_0 = 'const char char_width[] = {'
+        C_char_width_1 = (','.join(width_array))
+        C_char_width_2 = '};\n'
+
+        outfile.write(C_char_width_0 + C_char_width_1 + C_char_width_2)
+
+        for char in character_line:
+            C_addr_array.append('&bitmap_' + str(ord(char)))
+
+        C_addr  = (','.join(C_addr_array))
+        C_address_declaration_1 = "const char* char_addr[] = {"
+        C_address_declaration_2 = "};\n"
+
+        outfile.write(C_address_declaration_1 + C_addr + C_address_declaration_2)
 
     outfile.close()
 

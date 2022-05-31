@@ -512,12 +512,15 @@ def write_bmh_char(outfile, char, dot_array, progmem, headerformat):
 
         C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};'
         
+    suffix = f" // Char {ord(char)} / {hex(ord(char))}"
     if ord(char) >= 32 and ord(char) < 128:
         if ord(char) == 92:
-            C_printline = C_printline + ' // char (backslash)'
+            # a backslash is a comment messes with some compilers
+            suffix = suffix + ": (backslash)"
         else:
-            C_printline = C_printline + ' // char ' + char
-    C_printline = C_printline + '\n'
+            suffix = suffix + f": '{char}'"
+        
+    C_printline = C_printline + suffix + '\n'
     #print(C_printline)
     outfile.write(C_printline)
 
@@ -577,33 +580,6 @@ def write_bmh_tail(outfile, width_array, character_line, height, width, progmem,
             outfile.write(f"}};\n\n")
             outfile.write(f"#define FONT{printable_fontname.upper()} (&TinyOLEDFont{printable_fontname})\n")
              
-        
-        
-# // ----------------------------------------------------------------------------
-
-# const uint8_t Tiny4kOLED_font8x16_caps_widths [] PROGMEM = {
-#   7,2,6,7,5,7,8,3,4,4,7,7,3,6,2,7,
-#   6,5,6,6,6,6,6,6,6,6,2,2,6,7,6,6,
-#   7,8,7,7,7,7,7,7,8,5,7,7,7,7,8,7,
-#   7,7,8,6,7,8,8,7,8,7,7,4,6,6,5,8
-# };
-
-# const uint16_t Tiny4kOLED_font8x16_caps_widths_16s [] PROGMEM = {
-#   7+2+6+7+5+7+8+3+4+4+7+7+3+6+2+7,
-#   6+5+6+6+6+6+6+6+6+6+2+2+6+7+6+6,
-#   7+8+7+7+7+7+7+7+8+5+7+7+7+7+8+7,
-#   7+7+8+6+7+8+8+7+8+7+7+4+6+6+5+8
-# };
-
-# const DCfont Tiny4kOLEDfont8x16Caps = {
-#   (uint8_t *)Tiny4kOLED_font8x16_caps,
-#   0, // character width in pixels
-#   2, // character height in pages (8 pixels)
-#   32,95, // ASCII extents
-#   (uint16_t *)Tiny4kOLED_font8x16_caps_widths_16s,
-#   (uint8_t *)Tiny4kOLED_font8x16_caps_widths,
-#   1 // spacing
-#   };        
     else:
         C_addr_array = []
         C_char_width_0 = 'const char char_width[] = {'

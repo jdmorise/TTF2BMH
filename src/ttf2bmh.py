@@ -261,7 +261,7 @@ def main():
                 else:
                     mywidth = str(width)
                     
-                printable_fontname = f"{Font.replace(' ','_')}_{height}x{mywidth}"
+                printable_fontname = f"{Font.replace(' ','_')}_{mywidth}x{height}"
                 outfile = write_bmh_head(h_filename, Font, height, mywidth, sys.argv, progmem, headerformat, printable_fontname)
 
                 # the overall image, combines all characters, constructed one by one
@@ -485,7 +485,7 @@ def write_bmh_head(h_filename, Font, height, width, args, progmem, headerformat,
     outfile.write("// Generated with TTF2BMH, with arguments " + ' '.join(args) + "\n")
     outfile.write("// Font " +  Font + "\n")
     #print('Font: ' + Font + ', Size:' + str(height))
-    outfile.write(f"// Font Size: {height} * {width}\n")
+    outfile.write(f"// Font Size: {width} w * {height} h\n")
     
     if headerformat  == 'tiny4koled':
         outfile.write("#include <avr/pgmspace.h>\n\n")

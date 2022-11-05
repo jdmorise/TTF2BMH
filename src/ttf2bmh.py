@@ -403,21 +403,14 @@ def write_pic_file(image_pic, width_so_far, height, png_filename):
 def get_pixel_byte(image, height, char_width, x_offset, print_ascii = False):
     dot_threshold = 127
     dot_array = []
-    s = ""
     for y_s in range(int(height/8)):
-        if print_ascii and y_s > 0:
-            s = "\n"
         for x_s in range(char_width):
             dot_byte = 0
             for k in range(8):
                 bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
                 if(bmf_s < dot_threshold):
                     dot_byte = dot_byte + 2**k
-            if print_ascii:
-                dot_array.append(s+format(dot_byte,"#010b"))
-                s = ""
-            else:
-                dot_array.append(str(dot_byte))
+            dot_array.append("0x" + format(dot_byte, "02X"))
     return dot_array
 
 #---------------------------------------------------------------------------------------
@@ -438,7 +431,7 @@ def calculate_char_width(image, width, height):
             zero_col_cnt_left += 1
         else:
             break
-# Count empty columns from left
+    # Count empty columns from left
     zero_col_cnt_right = 0
     for x_c in range(width):
 

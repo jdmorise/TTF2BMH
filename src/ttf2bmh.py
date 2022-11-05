@@ -79,6 +79,7 @@ def main():
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-T','--Tiny4kOLED',dest='tiny4koled',default=False, action='store_true',help='Make C code formatted for Tiny4kOLED. Must be used with --range. (supports both fixed and variable width)')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.')
+    parser.add_argument('-R','--rotate',dest='rotate', default=False, action='store_true',help='Rotates the Bitmap to read pixels from left to right then from top to bottom.')
     
     
     args = parser.parse_args()
@@ -98,6 +99,7 @@ def main():
         # Folder to iterate on
         ttf_searchfolder = args.ttf_folder
         output_folder = args.output_folder
+        rotate = args.rotate
 
         if not (os.path.exists(output_folder)):
             os.mkdir(output_folder)
@@ -296,7 +298,7 @@ def main():
                         x_offset = 0
 
                     width_array.append(str(char_width))
-                    dot_array = get_pixel_byte(image, height, char_width, x_offset, print_ascii)
+                    dot_array = get_pixel_byte(image, height, char_width, x_offset, rotate=rotate)
 
                     write_bmh_char(outfile, char, dot_array, progmem, headerformat)
                     if(print_ascii):
@@ -400,17 +402,27 @@ def write_pic_file(image_pic, width_so_far, height, png_filename):
 
 #---------------------------------------------------------------------------------------
 # Calculate full pixels from image
-def get_pixel_byte(image, height, char_width, x_offset, print_ascii = False):
+def get_pixel_byte(image, height, char_width, x_offset, rotate=False):
     dot_threshold = 127
     dot_array = []
-    for y_s in range(int(height/8)):
-        for x_s in range(char_width):
-            dot_byte = 0
-            for k in range(8):
-                bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
-                if(bmf_s < dot_threshold):
-                    dot_byte = dot_byte + 2**k
-            dot_array.append("0x" + format(dot_byte, "02X"))
+    if not rotate:
+        for y_s in range(int(height/8)):
+            for x_s in range(char_width):
+                dot_byte = 0
+                for k in range(8):
+                    bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
+                    if(bmf_s < dot_threshold):
+                        dot_byte = dot_byte + 2**k
+                dot_array.append("0x" + format(dot_byte, "02X"))
+    else:
+        for y_s in range(height):
+            for x_s in range(int(char_width/8) if (char_width % 8 == 0) else int(char_width/8)+1):
+                dot_byte = 0
+                for k in range(8):
+                    bmf_s = image.getpixel(((x_s * 8 + x_offset + 7 - k), (y_s)))
+                    if(bmf_s < dot_threshold):
+                        dot_byte = dot_byte + 2**k
+                dot_array.append("0x" + format(dot_byte, "02X"))
     return dot_array
 
 #---------------------------------------------------------------------------------------

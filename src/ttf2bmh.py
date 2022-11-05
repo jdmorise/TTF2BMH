@@ -39,7 +39,7 @@ from fontTools import ttLib
 from PIL import Image, ImageFont, ImageDraw
 import argparse
 
-VERSION = '2.4'
+VERSION = '2.5'
 
 
 import re

@@ -68,10 +68,10 @@ def main():
     parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters. Shortcut for "-r 32-126".')
     parser.add_argument('--lowerascii', action='store_true', help='Convert for all lower ascii characters (punctuation and digits only) Shortcut for "-r 32-64".')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
-    parser.add_argument('-s','--fontsize', default='32', choices=['8','16','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
+    parser.add_argument('-s','--fontsize', default='32', nargs='*', type=int, help='Fontsize (Fontheight) in pixels. Multiple values allowed. Default: 32')
     parser.add_argument('-O','--offset', type=int, help='Y Offset for characters (Default is based off font size)')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters (overrides --square and --width).')
-    parser.add_argument('-fh','--font_height', help='Define fontsize of rendered font within the defined pixel image boundary')
+    parser.add_argument('-fh','--font_height', nargs='*', type=int, help='Define fontsize of rendered font within the defined pixel image boundary. If defined must have same number of arguments as fontsize.')
     parser.add_argument('-a','--anchor', default='ascender', choices=['ascender','top','middle','baseline','bottom','descender'],help='Vertical anchor for the text. For anything but the default (ascender), you will want to adapt Offset.')
     parser.add_argument('-y','--y_offset', help='Define starting offset of character. Only meaningful if specific fontsize is rendered.')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
@@ -122,16 +122,6 @@ def main():
         else:
             TTF_FILES = search_ttf_folder(ttf_searchfolder)
 
-
-        # Definition of Font Heights and offsets
-        font_heights = [8, 16, 24, 32, 40, 48, 56, 64]
-        font_yoffsets = [0, 3, 6, 5, 7, 8, 9, 10]
-
-        if(args.fontsize == 'all'):
-            height_indices = range(len(font_heights))
-        else:
-            height_indices = [font_heights.index(int(args.fontsize))]
-            
         chars_must_be_in_sequence = False
         headerformat = ""
         if args.tiny4koled:
@@ -213,11 +203,11 @@ def main():
             if not (os.path.exists(output_bmh_folder)):
                 os.mkdir(output_bmh_folder)
 
-            for height_idx in height_indices:
+            for height_idx in range(len(args.fontsize)):
                 width_array = []
 
                 # initialize PIL Image
-                height = font_heights[height_idx]
+                height = args.fontsize[height_idx]
                 if args.width:
                     width = int(args.width)
                 elif args.square:
@@ -227,7 +217,7 @@ def main():
                 if args.offset is not None:
                     yoffset = args.offset
                 else:
-                    yoffset = font_yoffsets[height_idx]
+                    yoffset = 0
 
                 # Filename Definitions
                 filename = Font + '_' + str(height) # General Filename
@@ -242,12 +232,10 @@ def main():
                 size = [width, height]
 
                 if (args.font_height is None):
-                    font_height = int(font_heights[height_idx]*0.75)
+                    font_height = int(height*0.75)
                 else:
-                    font_height = int(args.font_height)
+                    font_height = int(args.font_height[height_idx])
 
-                #font_height = int(height*1.1)
-                
                 if(print_ascii):
                     print("\n" + filename + ':')
                     
@@ -406,7 +394,7 @@ def get_pixel_byte(image, height, char_width, x_offset, rotate=False):
     dot_threshold = 127
     dot_array = []
     if not rotate:
-        for y_s in range(int(height/8)):
+        for y_s in range(int(height/8) if (height % 8 == 0) else int(height/8)+1):
             for x_s in range(char_width):
                 dot_byte = 0
                 for k in range(8):

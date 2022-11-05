@@ -242,7 +242,7 @@ def main():
                 size = [width, height]
 
                 if (args.font_height is None):
-                    font_height = int(font_heights[height_idx]*1.1)
+                    font_height = int(font_heights[height_idx]*0.75)
                 else:
                     font_height = int(args.font_height)
 

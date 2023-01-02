@@ -54,7 +54,7 @@ The script offers a command line interface with somehow self-describing argument
       --square              Make the font square instead of height by (height * 0.75)
       -w WIDTH, --width WIDTH
                             Fixed font width in pixels. Default: height * 0.75 (overrides --square)
-      --progmem             C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR
+      --progmem             C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in program memory for AVR
                             Microcontrollers with limited Flash or EEprom
       -T, --Tiny4kOLED      Make C code formatted for Tiny4kOLED. Must be used with --range. (supports both fixed and variable width)
       -p, --print_ascii     Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.

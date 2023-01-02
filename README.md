@@ -17,39 +17,48 @@ The byte array is ordered the following:
 The script offers a command line interface with somehow self-describing arguments. On the command line, the search path and the folder name can be chosen. Default search path is the Windows Font directory under C:\Windows\Fonts\.
 
 
-    usage: ttf2bmh.py [-h] [-l] [-f TTF_FOLDER] [-o OUTPUT_FOLDER] [-c CHARACTER_FILENAME] [-C CHARACTERS] [--ascii] [--lowerascii] [--font FONT] [-s {8,16,24,32,40,48,56,64,all}] [-O OFFSET]
-                    [--variable_width] [-fh FONT_HEIGHT] [-y Y_OFFSET] [--progmem] [-p] [--square] [-w WIDTH] [-a {ascender,top,middle,baseline,bottom,descender}]
+usage: ttf2bmh.py [-h] [-l] [-f TTF_FOLDER] [-o OUTPUT_FOLDER] [-c CHARACTER_FILENAME] [-C CHARACTERS] [-r RANGE] [--ascii]
+                  [--lowerascii] [--font FONT] [-s [FONTSIZE ...]] [-O OFFSET] [--variable_width] [-fh [FONT_HEIGHT ...]]
+                  [-a {ascender,top,middle,baseline,bottom,descender}] [-y Y_OFFSET] [--square] [-w WIDTH] [--progmem] [-T] [-p] [-R]
 
-    optional arguments:
-    -h, --help            show this help message and exit
-    -l, --license         show license terms
-    -f TTF_FOLDER, --ttf_folder TTF_FOLDER
-                            Folder where ttf files are stored (Defaults to C:\Windows\Fonts\ on Windows, /usr/share/fonts on Linux)
-    -o OUTPUT_FOLDER, --output_folder OUTPUT_FOLDER
-                            Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the directory (Defaults to ./bmhfonts)
-    -c CHARACTER_FILENAME, --character_filename CHARACTER_FILENAME
-                            filename for characters to be processed
-    -C CHARACTERS, --characters CHARACTERS
-                            String of characters to be processed (if no character_filename passed in)
-    --ascii               Convert for all ascii characters (overrides -c and -C)
-    --lowerascii          Convert for all lower ascii characters (punctuation and digits only) (overrides -c and -C amd --ascii)
-    --font FONT           Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.
-    -s {8,16,24,32,40,48,56,64,all}, --fontsize {8,16,24,32,40,48,56,64,all}
-                            Fontsize (Fontheight) in pixels. Default: 32
-    -O OFFSET, --offset OFFSET
-                            Y Offset for characters (Default is based off font size)
-    --variable_width      Variable width of characters (overrides --square and --width).
-    -fh FONT_HEIGHT, --font_height FONT_HEIGHT
-                            Define fontsize of rendered font within the defined pixel image boundary
-    -y Y_OFFSET, --y_offset Y_OFFSET
-                            Define starting offset of character. Only meaningful if specific fontsize is rendered.
-    --progmem             C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom
-    -p, --print_ascii     Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.
-    --square              Make the font square instead of height by (height * 0.75)
-    -w WIDTH, --width WIDTH
-                            Fixed font width in pixels. Default: height * 0.75 (overrides --square)
-    -a {ascender,top,middle,baseline,bottom,descender}, --anchor {ascender,top,middle,baseline,bottom,descender}
-                            Vertical anchor for the text. For anything but the default (ascender), you will want to adapt Offset.
+options:
+  -h, --help            show this help message and exit
+  -l, --license         show license terms
+  -f TTF_FOLDER, --ttf_folder TTF_FOLDER
+                        Folder where ttf files are stored (Defaults to C:\Windows\Fonts\ on Windows, /usr/share/fonts on Linux)
+  -o OUTPUT_FOLDER, --output_folder OUTPUT_FOLDER
+                        Folder where bitmapheader output files will be stored. A subfolder for each Font will be created under the
+                        directory (Defaults to ./bmhfonts)
+  -c CHARACTER_FILENAME, --character_filename CHARACTER_FILENAME
+                        filename for characters to be processed
+  -C CHARACTERS, --characters CHARACTERS
+                        String of characters to be processed (if no character_filename passed in)
+  -r RANGE, --range RANGE
+                        range of characters, by decimal value in the ASCII table. Example: "32-126" or "96". (overrides -c and -C)
+  --ascii               Convert for all ascii characters. Shortcut for "-r 32-126".
+  --lowerascii          Convert for all lower ascii characters (punctuation and digits only) Shortcut for "-r 32-64".
+  --font FONT           Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts
+                        in folder will be processed.
+  -s [FONTSIZE ...], --fontsize [FONTSIZE ...]
+                        Fontsize (Fontheight) in pixels. Multiple values allowed. Default: 32
+  -O OFFSET, --offset OFFSET
+                        Y Offset for characters (Default is based off font size)
+  --variable_width      Variable width of characters (overrides --square and --width).
+  -fh [FONT_HEIGHT ...], --font_height [FONT_HEIGHT ...]
+                        Define fontsize of rendered font within the defined pixel image boundary. If defined must have same number of
+                        arguments as fontsize.
+  -a {ascender,top,middle,baseline,bottom,descender}, --anchor {ascender,top,middle,baseline,bottom,descender}
+                        Vertical anchor for the text. For anything but the default (ascender), you will want to adapt Offset.
+  -y Y_OFFSET, --y_offset Y_OFFSET
+                        Define starting offset of character. Only meaningful if specific fontsize is rendered.
+  --square              Make the font square instead of height by (height * 0.75)
+  -w WIDTH, --width WIDTH
+                        Fixed font width in pixels. Default: height * 0.75 (overrides --square)
+  --progmem             C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR
+                        Microcontrollers with limited Flash or EEprom
+  -T, --Tiny4kOLED      Make C code formatted for Tiny4kOLED. Must be used with --range. (supports both fixed and variable width)
+  -p, --print_ascii     Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.
+  -R, --rotate          Rotates the Bitmap to read pixels from left to right then from top to bottom.
 
 The program can also be run directly on Linux systems by doing `./ttf2bmh.py`
 

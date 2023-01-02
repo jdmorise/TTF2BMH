@@ -39,7 +39,7 @@ from fontTools import ttLib
 from PIL import Image, ImageFont, ImageDraw
 import argparse
 
-VERSION = '2.4'
+VERSION = '2.5'
 
 
 import re
@@ -68,10 +68,11 @@ def main():
     parser.add_argument('--ascii', action='store_true', help='Convert for all ascii characters. Shortcut for "-r 32-126".')
     parser.add_argument('--lowerascii', action='store_true', help='Convert for all lower ascii characters (punctuation and digits only) Shortcut for "-r 32-64".')
     parser.add_argument('--font', default = '', help='Define Font Name to be processed. Name should include modifier like Bold or Italic. If none is given, all fonts in folder will be processed.')
-    parser.add_argument('-s','--fontsize', default='32', choices=['8','16','24', '32', '40', '48', '56', '64', 'all'], help='Fontsize (Fontheight) in pixels. Default: 32')
+    parser.add_argument('-s','--fontsize', default='32', nargs='*', type=int, help='Fontsize (Fontheight) in pixels. Multiple values allowed. Default: 32')
     parser.add_argument('-O','--offset', type=int, help='Y Offset for characters (Default is based off font size)')
     parser.add_argument('--variable_width', default=False, action='store_true', help='Variable width of characters (overrides --square and --width).')
-    parser.add_argument('-fh','--font_height', help='Define fontsize of rendered font within the defined pixel image boundary')
+    parser.add_argument('--variable_height', default=False, action='store_true', help='Variable height of characters in header file. Adds y-offset array to calculate posotion.')
+    parser.add_argument('-fh','--font_height', nargs='*', type=int, help='Define fontsize of rendered font within the defined pixel image boundary. If defined must have same number of arguments as fontsize.')
     parser.add_argument('-a','--anchor', default='ascender', choices=['ascender','top','middle','baseline','bottom','descender'],help='Vertical anchor for the text. For anything but the default (ascender), you will want to adapt Offset.')
     parser.add_argument('-y','--y_offset', help='Define starting offset of character. Only meaningful if specific fontsize is rendered.')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
@@ -79,6 +80,7 @@ def main():
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-T','--Tiny4kOLED',dest='tiny4koled',default=False, action='store_true',help='Make C code formatted for Tiny4kOLED. Must be used with --range. (supports both fixed and variable width)')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging. Also makes the .h file more verbose.')
+    parser.add_argument('-R','--rotate',dest='rotate', default=False, action='store_true',help='Rotates the Bitmap to read pixels from left to right then from top to bottom.')
     
     
     args = parser.parse_args()
@@ -98,6 +100,7 @@ def main():
         # Folder to iterate on
         ttf_searchfolder = args.ttf_folder
         output_folder = args.output_folder
+        rotate = args.rotate
 
         if not (os.path.exists(output_folder)):
             os.mkdir(output_folder)
@@ -107,6 +110,7 @@ def main():
             return(-1)
 
         variable_width = args.variable_width
+        variable_height = args.variable_height
 
         Target_Font = args.font
         if not (Target_Font == ''):
@@ -120,16 +124,6 @@ def main():
         else:
             TTF_FILES = search_ttf_folder(ttf_searchfolder)
 
-
-        # Definition of Font Heights and offsets
-        font_heights = [8, 16, 24, 32, 40, 48, 56, 64]
-        font_yoffsets = [0, 3, 6, 5, 7, 8, 9, 10]
-
-        if(args.fontsize == 'all'):
-            height_indices = range(len(font_heights))
-        else:
-            height_indices = [font_heights.index(int(args.fontsize))]
-            
         chars_must_be_in_sequence = False
         headerformat = ""
         if args.tiny4koled:
@@ -211,11 +205,13 @@ def main():
             if not (os.path.exists(output_bmh_folder)):
                 os.mkdir(output_bmh_folder)
 
-            for height_idx in height_indices:
+            for height_idx in range(len(args.fontsize)):
                 width_array = []
+                height_array = []
+                y_offset_array = []
 
                 # initialize PIL Image
-                height = font_heights[height_idx]
+                height = args.fontsize[height_idx]
                 if args.width:
                     width = int(args.width)
                 elif args.square:
@@ -225,7 +221,7 @@ def main():
                 if args.offset is not None:
                     yoffset = args.offset
                 else:
-                    yoffset = font_yoffsets[height_idx]
+                    yoffset = 0
 
                 # Filename Definitions
                 filename = Font + '_' + str(height) # General Filename
@@ -240,12 +236,10 @@ def main():
                 size = [width, height]
 
                 if (args.font_height is None):
-                    font_height = int(font_heights[height_idx]*1.1)
+                    font_height = int(height*0.75)
                 else:
-                    font_height = int(args.font_height)
+                    font_height = int(args.font_height[height_idx])
 
-                #font_height = int(height*1.1)
-                
                 if(print_ascii):
                     print("\n" + filename + ':')
                     
@@ -295,8 +289,28 @@ def main():
                         char_width = width
                         x_offset = 0
 
+                    if(variable_height):
+                        [zero_col_cnt_up, zero_col_cnt_down] = calculate_char_height(image, width, height)
+                        char_height = height - zero_col_cnt_up - zero_col_cnt_down
+                        y_offset = zero_col_cnt_up
+                        # print(f"{ord(char)}: w={char_width}, x={x_offset}\n")
+                        if char_height < 1:
+                            char_height = 0
+                            y_offset = 0
+                            
+                        if char_height == 0 and ord(char) == 32:
+                            # special case for space
+                            char_height = height
+                            y_offset = 0
+                    else:
+                        char_height = height
+                        y_offset = 0
+
                     width_array.append(str(char_width))
-                    dot_array = get_pixel_byte(image, height, char_width, x_offset, print_ascii)
+                    height_array.append(str(int(char_height/8) if \
+                            (char_height % 8 == 0) else int(char_height/8)+1))
+                    y_offset_array.append(str(y_offset))
+                    dot_array = get_pixel_byte(image, char_height, y_offset, char_width, x_offset, rotate=rotate)
 
                     write_bmh_char(outfile, char, dot_array, progmem, headerformat)
                     if(print_ascii):
@@ -313,7 +327,7 @@ def main():
                     mywidth = 0
                 else:
                     mywidth = width
-                write_bmh_tail(outfile, width_array, character_line, height, mywidth, progmem, headerformat, printable_fontname)
+                write_bmh_tail(outfile, width_array, height_array, y_offset_array, character_line, height, mywidth, progmem, headerformat, printable_fontname)
                 
                 # write Image picture with all characters
                 write_pic_file(image_pic, width_so_far, height, png_filename)
@@ -400,24 +414,33 @@ def write_pic_file(image_pic, width_so_far, height, png_filename):
 
 #---------------------------------------------------------------------------------------
 # Calculate full pixels from image
-def get_pixel_byte(image, height, char_width, x_offset, print_ascii = False):
+def get_pixel_byte(image, char_height, y_offset, char_width, x_offset, rotate=False):
     dot_threshold = 127
     dot_array = []
-    s = ""
-    for y_s in range(int(height/8)):
-        if print_ascii and y_s > 0:
-            s = "\n"
-        for x_s in range(char_width):
-            dot_byte = 0
-            for k in range(8):
-                bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
-                if(bmf_s < dot_threshold):
-                    dot_byte = dot_byte + 2**k
-            if print_ascii:
-                dot_array.append(s+format(dot_byte,"#010b"))
-                s = ""
-            else:
-                dot_array.append(str(dot_byte))
+    if not rotate:
+        for y_s in range(int(char_height/8) if (char_height % 8 == 0) else int(char_height/8)+1):
+            for x_s in range(char_width):
+                dot_byte = 0
+                for k in range(8):
+                    try:
+                        bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + y_offset +  7 - k)))
+                    except:
+                        continue
+                    if(bmf_s < dot_threshold):
+                        dot_byte = dot_byte + 2**k
+                dot_array.append("0x" + format(dot_byte, "02X"))
+    else:
+        for y_s in range(char_height):
+            for x_s in range(int(char_width/8) if (char_width % 8 == 0) else int(char_width/8)+1):
+                dot_byte = 0
+                for k in range(8):
+                    try:
+                        bmf_s = image.getpixel(((x_s * 8 + x_offset + 7 - k), (y_s + y_offset)))
+                    except:
+                        continue
+                    if(bmf_s < dot_threshold):
+                        dot_byte = dot_byte + 2**k
+                dot_array.append("0x" + format(dot_byte, "02X"))
     return dot_array
 
 #---------------------------------------------------------------------------------------
@@ -438,7 +461,7 @@ def calculate_char_width(image, width, height):
             zero_col_cnt_left += 1
         else:
             break
-# Count empty columns from left
+    # Count empty columns from left
     zero_col_cnt_right = 0
     for x_c in range(width):
 
@@ -454,6 +477,41 @@ def calculate_char_width(image, width, height):
             break
 
     return [zero_col_cnt_left, zero_col_cnt_right]
+
+#---------------------------------------------------------------------------------------
+# Count empty rows from the top
+def calculate_char_height(image, width, height):
+    dot_threshold = 127
+
+    zero_col_cnt_up = 0
+    for y_c in range(height):
+
+        pxl_col_cnt = 0
+        for x_c in range(height):
+            bmf_s = image.getpixel((x_c, y_c))
+            if(bmf_s < dot_threshold):
+                pxl_col_cnt += 1
+
+        if(pxl_col_cnt == 0):
+            zero_col_cnt_up += 1
+        else:
+            break
+    # Count empty rows from the bottom
+    zero_col_cnt_down = 0
+    for y_c in range(height):
+
+        pxl_col_cnt = 0
+        for x_c in range(height):
+            bmf_s = image.getpixel((x_c, height-y_c-1))
+            if(bmf_s < dot_threshold):
+                pxl_col_cnt += 1
+
+        if(pxl_col_cnt == 0):
+            zero_col_cnt_down += 1
+        else:
+            break
+
+    return [zero_col_cnt_up, zero_col_cnt_down]
 
 #---------------------------------------------------------------------------------------
 # Read character file
@@ -486,6 +544,7 @@ def write_bmh_head(h_filename, Font, height, width, args, progmem, headerformat,
     outfile.write("// Font " +  Font + "\n")
     #print('Font: ' + Font + ', Size:' + str(height))
     outfile.write(f"// Font Size: {width} w * {height} h\n")
+    outfile.write(f"#define TEXT_SIZE_PX {height}\n")
     
     if headerformat  == 'tiny4koled':
         outfile.write("#include <avr/pgmspace.h>\n\n")
@@ -526,7 +585,7 @@ def write_bmh_char(outfile, char, dot_array, progmem, headerformat):
 
 #---------------------------------------------------------------------------------------
 # Write BMH Tail and close file
-def write_bmh_tail(outfile, width_array, character_line, height, width, progmem, headerformat, printable_fontname):
+def write_bmh_tail(outfile, width_array, height_array, y_offset_array, character_line, height, width, progmem, headerformat, printable_fontname):
 
     pm = ""
     if progmem: 
@@ -588,8 +647,20 @@ def write_bmh_tail(outfile, width_array, character_line, height, width, progmem,
 
         outfile.write(C_char_width_0 + C_char_width_1 + C_char_width_2)
 
+        C_char_height_0 = 'const char char_height[] = {'
+        C_char_height_1 = (','.join(height_array))
+        C_char_height_2 = '};\n'
+
+        outfile.write(C_char_height_0 + C_char_height_1 + C_char_height_2)
+
+        C_char_y_offset_0 = 'const char char_y_offset[] = {'
+        C_char_y_offset_1 = (','.join(y_offset_array))
+        C_char_y_offset_2 = '};\n'
+
+        outfile.write(C_char_y_offset_0 + C_char_y_offset_1 + C_char_y_offset_2)
+
         for char in character_line:
-            C_addr_array.append('&bitmap_' + str(ord(char)))
+            C_addr_array.append('bitmap_' + str(ord(char)))
 
         C_addr  = (','.join(C_addr_array))
         C_address_declaration_1 = "const char* char_addr[] = {"
